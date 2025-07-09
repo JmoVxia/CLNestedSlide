@@ -1,0 +1,37 @@
+# Mac OS X
+*.DS_Store
+:
+# Xcode
+
+*.xcworkspacedata
+*.xcsettings
+*.xcscheme
+
+*.pbxuser
+
+*.mode1v3
+
+*.mode2v3
+
+*.perspectivev3
+
+*.xcuserstate
+
+project.xcworkspace/
+
+xcuserdata/
+
+project.xcworkspace
+
+Assets.swift
+
+xcuserdata
+
+UserInterfaceState.xcuserstate
+
+UserInterface.xcuserstate
+
+# Pod
+
+*.lock
+Pods/
