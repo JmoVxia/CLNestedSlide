@@ -137,7 +137,6 @@
 			mainGroup = 4F5196042E1E2F1B00818EEA;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				4F73FCE92E1E5F9700AACCE7 /* XCRemoteSwiftPackageReference "CLNestedSlide" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4F51960E2E1E2F1B00818EEA /* Products */;
