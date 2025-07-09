@@ -9,8 +9,8 @@ class CLSegmentedBar: UIView {
     private var titles: [String] = []
     private(set) var selectedIndex: Int = 0
     var onSelect: ((Int) -> Void)?
-    var normalColor: UIColor = .blue
-    var activeColor: UIColor = .orange
+    var normalColor: UIColor = .label
+    var activeColor: UIColor = .systemOrange
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
@@ -40,26 +40,37 @@ class CLSegmentedBar: UIView {
         indicatorView.center.x = targetCenterX
     }
     func updateTitleColorWithProgress(baseIndex: Int, offset: CGFloat) {
+        let targetIndex = offset > 0 ? baseIndex + 1 : (offset < 0 ? baseIndex - 1 : baseIndex)
         for (i, label) in titleLabels.enumerated() {
-            var colorProgress: CGFloat = 0
-            var fontWeight: UIFont.Weight = .medium
             if i == baseIndex {
-                colorProgress = 1.0 - abs(offset)
-                fontWeight = abs(offset) < 0.5 ? .semibold : .medium
-            } else if (i == baseIndex + 1 && offset > 0) {
-                colorProgress = offset
-                fontWeight = offset > 0.5 ? .semibold : .medium
-            } else if (i == baseIndex - 1 && offset < 0) {
-                colorProgress = abs(offset)
-                fontWeight = abs(offset) > 0.5 ? .semibold : .medium
+                let progress = 1.0 - abs(offset)
+                label.textColor = interpolateColor(from: normalColor, to: activeColor, progress: progress)
+                label.font = .systemFont(ofSize: 16, weight: progress > 0.5 ? .semibold : .medium)
+            } else if i == targetIndex && baseIndex != targetIndex {
+                let progress = abs(offset)
+                label.textColor = interpolateColor(from: normalColor, to: activeColor, progress: progress)
+                label.font = .systemFont(ofSize: 16, weight: progress > 0.5 ? .semibold : .medium)
+            } else {
+                label.textColor = normalColor
+                label.font = .systemFont(ofSize: 16, weight: .medium)
             }
-            colorProgress = max(0, min(1, colorProgress))
-            label.textColor = interpolateColor(from: normalColor, to: activeColor, progress: colorProgress)
-            label.font = .systemFont(ofSize: 16, weight: fontWeight)
         }
     }
     private func setupUI() {
-        backgroundColor = .systemBackground
+        // 毛玻璃背景
+        let blur = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterial))
+        blur.layer.cornerRadius = 16
+        blur.clipsToBounds = true
+        insertSubview(blur, at: 0)
+        blur.snp.makeConstraints { make in make.edges.equalToSuperview() }
+        layer.cornerRadius = 16
+        layer.masksToBounds = true
+        // 底部分割线
+        let bottomLine = UIView()
+        bottomLine.backgroundColor = UIColor.black.withAlphaComponent(0.08)
+        addSubview(bottomLine)
+        bottomLine.snp.makeConstraints { make in make.left.right.bottom.equalToSuperview(); make.height.equalTo(1) }
+        // 内容
         addSubview(scrollView)
         scrollView.showsHorizontalScrollIndicator = false
         scrollView.showsVerticalScrollIndicator = false
@@ -70,10 +81,18 @@ class CLSegmentedBar: UIView {
         stackView.spacing = 0
         scrollView.addSubview(stackView)
         stackView.snp.makeConstraints { make in make.edges.equalToSuperview(); make.height.equalToSuperview() }
-        indicatorView.backgroundColor = .systemBlue
-        indicatorView.layer.cornerRadius = 1.5
+        // 渐变圆角指示器
+        let gradient = CAGradientLayer()
+        gradient.colors = [UIColor.systemOrange.cgColor, UIColor.systemPurple.cgColor]
+        gradient.startPoint = CGPoint(x: 0, y: 0.5)
+        gradient.endPoint = CGPoint(x: 1, y: 0.5)
+        gradient.cornerRadius = 6
+        indicatorView.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
+        indicatorView.layer.insertSublayer(gradient, at: 0)
+        indicatorView.layer.cornerRadius = 6
+        indicatorView.clipsToBounds = true
         addSubview(indicatorView)
-        indicatorView.snp.makeConstraints { make in make.bottom.equalToSuperview().offset(-1); make.height.equalTo(3); make.width.equalTo(60) }
+        indicatorView.snp.makeConstraints { make in make.bottom.equalToSuperview().offset(-2); make.height.equalTo(6); make.width.equalTo(60) }
     }
     private func setupLabels() {
         titleLabels.forEach { $0.removeFromSuperview() }
@@ -86,6 +105,8 @@ class CLSegmentedBar: UIView {
             label.textColor = index == 0 ? activeColor : normalColor
             label.textAlignment = .center
             label.isUserInteractionEnabled = true
+            label.highlightedTextColor = nil
+            label.backgroundColor = .clear
             let tapGesture = UITapGestureRecognizer(target: self, action: #selector(labelTapped(_:)))
             label.addGestureRecognizer(tapGesture)
             label.tag = index
@@ -104,7 +125,7 @@ class CLSegmentedBar: UIView {
         for (i, label) in titleLabels.enumerated() {
             if i == index {
                 label.textColor = activeColor
-                label.font = .systemFont(ofSize: 16, weight: .semibold)
+                label.font = .systemFont(ofSize: 18, weight: .bold)
             } else {
                 label.textColor = normalColor
                 label.font = .systemFont(ofSize: 16, weight: .medium)
@@ -115,18 +136,24 @@ class CLSegmentedBar: UIView {
         guard index < titleLabels.count else { return }
         let targetLabel = titleLabels[index]
         indicatorView.snp.remakeConstraints { make in
-            make.bottom.equalToSuperview().offset(-1)
-            make.height.equalTo(3)
+            make.bottom.equalToSuperview().offset(-2)
+            make.height.equalTo(6)
             make.width.equalTo(60)
             make.centerX.equalTo(targetLabel)
         }
         if animated {
-            UIView.animate(withDuration: 0.3, delay: 0, options: [.curveEaseInOut], animations: {
+            UIView.animate(withDuration: 0.35, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0.5, options: [.curveEaseInOut], animations: {
                 self.layoutIfNeeded()
             })
         } else {
             layoutIfNeeded()
         }
+        // 渐变指示器自适应宽度和圆角
+        if let gradient = indicatorView.layer.sublayers?.first as? CAGradientLayer {
+            gradient.frame = indicatorView.bounds
+            gradient.cornerRadius = indicatorView.bounds.height / 2
+        }
+        indicatorView.layer.cornerRadius = indicatorView.bounds.height / 2
     }
     private func interpolateColor(from startColor: UIColor, to endColor: UIColor, progress: CGFloat) -> UIColor {
         guard progress > 0 else { return startColor }

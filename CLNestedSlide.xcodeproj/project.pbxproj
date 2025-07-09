@@ -6,11 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		4F73FCEB2E1E5F9700AACCE7 /* CLNestedSlide in Frameworks */ = {isa = PBXBuildFile; productRef = 4F73FCEA2E1E5F9700AACCE7 /* CLNestedSlide */; };
-		66A03AB125F6B736BFF20997 /* Pods_CLNestedSlide.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0AEF1CDC7E4A281BC4A2E8A3 /* Pods_CLNestedSlide.framework */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXFileReference section */
 		0AEF1CDC7E4A281BC4A2E8A3 /* Pods_CLNestedSlide.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_CLNestedSlide.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		4F51960D2E1E2F1B00818EEA /* CLNestedSlide.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CLNestedSlide.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -44,8 +39,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4F73FCEB2E1E5F9700AACCE7 /* CLNestedSlide in Frameworks */,
-				66A03AB125F6B736BFF20997 /* Pods_CLNestedSlide.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -412,25 +405,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		4F73FCE92E1E5F9700AACCE7 /* XCRemoteSwiftPackageReference "CLNestedSlide" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/JmoVxia/CLNestedSlide.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.0.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		4F73FCEA2E1E5F9700AACCE7 /* CLNestedSlide */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 4F73FCE92E1E5F9700AACCE7 /* XCRemoteSwiftPackageReference "CLNestedSlide" */;
-			productName = CLNestedSlide;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4F5196052E1E2F1B00818EEA /* Project object */;
 }

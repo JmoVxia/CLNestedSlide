@@ -13,9 +13,8 @@
 - **📐 旋转适配**: 自动处理横竖屏切换时的内容偏移修正
 - **🎨 现代架构**: 基于协议的设计，易于集成和扩展
 - **🔄 横竖屏支持**: 内置横竖屏旋转支持，自动适配布局
-- **🎛 多手势协调**: 支持多个手势识别器同时工作，无冲突
-- **📦 多种滚动视图**: 支持 UITableView、UICollectionView、UIScrollView 等
-- **🎯 零侵入**: 不影响原有滚动视图的代理方法实现
+- **📦 多种滚动视图**: 只要页面视图实现 CLNestedSlideViewPage 协议（如 UITableView、UICollectionView、UIScrollView 等），即可集成，框架本身不内置特殊适配
+- **🎯 零侵入**: 框架不会影响原有滚动视图的代理方法实现
 
 ## 📋 系统要求
 
@@ -82,87 +81,26 @@ class ViewController: UIViewController {
 extension ViewController: CLNestedSlideViewDataSource {
     // 🔑 关键：返回页面总数
     func numberOfPages(in nestedSlideView: CLNestedSlideView) -> Int {
-        return 3 // 你的页面数量
+        return pageData.count // 你的页面数量
     }
     
     // 🔑 关键：为每个索引创建页面视图
     // 返回的视图必须遵循 CLNestedSlideViewPage 协议
     func nestedSlideView(_ nestedSlideView: CLNestedSlideView, pageFor index: Int) -> CLNestedSlideViewPage {
-        // 可以根据 index 返回不同类型的页面
-        switch index {
-        case 0:
-            return TablePageView(title: "列表页")
-        case 1:
-            return CollectionPageView(title: "集合页")
-        case 2:
-            return ScrollPageView(title: "滚动页")
-        default:
-            return TablePageView(title: "默认页")
-        }
+        let data = pageData[index]
+        return CLDemoPageView(title: data.0, content: data.1, bgColor: data.2)
     }
 }
 ```
 
 ### 第三步：创建页面视图 （关键）
 
-```swift
-// 🔑 关键：页面视图必须遵循 CLNestedSlideViewPage 协议
-class TablePageView: UIView, CLNestedSlideViewPage {
-    private let tableView = UITableView()
-    
-    // 🔑 必需协议属性：提供滚动视图用于嵌套滚动
-    var scrollView: UIScrollView { tableView }
-    
-    // 以下属性由框架自动管理，无需手动实现
-    // var isSwipeEnabled: Bool { get set }
-    // var superScrollEnabledHandler: ((Bool) -> Bool)? { get set }
-    // func setupScrollViewDelegateIfNeeded()
-    
-    init(title: String) {
-        super.init(frame: .zero)
-        setupUI(title: title)
-        setupTableView()
-    }
-    
-    private func setupUI(title: String) {
-        backgroundColor = .systemBackground
-        
-        addSubview(tableView)
-        tableView.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
-        }
-    }
-    
-    private func setupTableView() {
-        // 🔑 重要：可以正常设置代理，框架会自动处理嵌套滚动
-        tableView.delegate = self
-        tableView.dataSource = self
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "Cell")
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-}
+页面视图需实现 `CLNestedSlideViewPage` 协议，并在内部通过 AutoLayout 约束撑开 `scrollView`，如：
 
-// 🔑 重要：你的代理方法正常实现，嵌套滚动会自动协调
-extension TablePageView: UITableViewDelegate, UITableViewDataSource {
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return 50
-    }
-    
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
-        cell.textLabel?.text = "第 \(indexPath.row + 1) 行"
-        return cell
-    }
-    
-    func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        // 🔑 重要：你的自定义滚动逻辑正常写，嵌套滚动协调自动处理
-        print("页面内部滚动: \(scrollView.contentOffset.y)")
-    }
-}
-```
+- 继承自 UIView
+- 实现 `var scrollView: UIScrollView { get }`
+
+只要满足上述要求，无论是 UITableView、UICollectionView 还是自定义 UIScrollView 页面，都可无缝集成。
 
 ### 第四步：实现代理方法 （可选）
 
@@ -182,131 +120,28 @@ extension ViewController: CLNestedSlideViewDelegate {
 
 ### 第五步：创建头部和悬停视图 （可选）
 
-```swift
-private func createHeaderView() -> UIView {
-    let header = UIView()
-    header.backgroundColor = .systemBlue
-    
-    // ⚠️ 重要：必须设置高度，否则不显示
-    header.snp.makeConstraints { make in
-        make.height.equalTo(200)
-    }
-    
-    // 添加内容...
-    let label = UILabel()
-    label.text = "这是头部视图"
-    label.textAlignment = .center
-    label.textColor = .white
-    header.addSubview(label)
-    label.snp.makeConstraints { make in
-        make.center.equalToSuperview()
-    }
-    
-    return header
-}
-
-private func createHoverView() -> UIView {
-    let hover = UIView()
-    hover.backgroundColor = .systemGray6
-    
-    // ⚠️ 重要：必须设置高度，否则不显示
-    hover.snp.makeConstraints { make in
-        make.height.equalTo(50)
-    }
-    
-    // 添加内容...
-    let segmentedControl = UISegmentedControl(items: ["页面1", "页面2", "页面3"])
-    segmentedControl.selectedSegmentIndex = 0
-    hover.addSubview(segmentedControl)
-    segmentedControl.snp.makeConstraints { make in
-        make.center.equalToSuperview()
-        make.leading.trailing.equalToSuperview().inset(16)
-    }
-    
-    return hover
-}
-```
-
-## ⚠️ 注意事项
-
-### headerView 和 hoverView 高度设置
-
-**推荐做法：**
-
-- **强烈建议将 headerView/hoverView 封装为自定义 UIView 子类**，并在自定义 view 内部通过 AutoLayout 约束撑开高度。
-- 这样可以让视图高度自适应内容，便于后续扩展和维护。
-- 不推荐直接在外部用 frame 设置高度。
-
-#### 推荐示例：自定义 view + 约束撑开
+推荐做法：在自定义 headerView/hoverView 内部，通过子视图（如 label）用约束撑开父 view，无需在外部设置高度。例如：
 
 ```swift
 class CustomHeaderView: UIView {
-    private let titleLabel = UILabel()
-    
+    private let label = UILabel()
     override init(frame: CGRect) {
         super.init(frame: frame)
-        setupUI()
-    }
-    
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        setupUI()
-    }
-    
-    private func setupUI() {
+        label.text = "这是头部视图"
+        label.textAlignment = .center
+        label.textColor = .white
+        addSubview(label)
+        // 关键：label 约束撑开父 view（使用 SnapKit）
+        label.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
         backgroundColor = .systemBlue
-        titleLabel.text = "这是头部视图"
-        titleLabel.textColor = .white
-        titleLabel.textAlignment = .center
-        addSubview(titleLabel)
-        titleLabel.snp.makeConstraints { make in
-            make.center.equalToSuperview()
-        }
-        // 关键：用约束撑开高度
-        self.snp.makeConstraints { make in
-            make.height.equalTo(200)
-        }
     }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
-
-// 使用
-nestedSlideView.headerView = CustomHeaderView()
 ```
 
-同理，悬浮视图也建议自定义：
-
-```swift
-class CustomHoverView: UIView {
-    private let segmentedControl = UISegmentedControl(items: ["页面1", "页面2", "页面3"])
-    
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        setupUI()
-    }
-    
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        setupUI()
-    }
-    
-    private func setupUI() {
-        backgroundColor = .systemGray6
-        addSubview(segmentedControl)
-        segmentedControl.selectedSegmentIndex = 0
-        segmentedControl.snp.makeConstraints { make in
-            make.center.equalToSuperview()
-            make.leading.trailing.equalToSuperview().inset(16)
-        }
-        // 关键：用约束撑开高度
-        self.snp.makeConstraints { make in
-            make.height.equalTo(50)
-        }
-    }
-}
-
-// 使用
-nestedSlideView.hoverView = CustomHoverView()
-```
+同理，hoverView 也推荐用 SnapKit 让内部控件撑开父 view。
 
 ### 页面视图要求详解
 
@@ -316,11 +151,6 @@ nestedSlideView.hoverView = CustomHoverView()
 protocol CLNestedSlideViewPage: AnyObject where Self: UIView {
     // 🔑 必需实现：提供内部的滚动视图
     var scrollView: UIScrollView { get }
-    
-    // 以下属性和方法由框架自动管理，无需手动实现：
-    // var isSwipeEnabled: Bool { get set }
-    // var superScrollEnabledHandler: ((Bool) -> Bool)? { get set }
-    // func setupScrollViewDelegateIfNeeded()
 }
 ```
 
@@ -608,7 +438,7 @@ protocol CLNestedSlideViewPage: AnyObject where Self: UIView {
 
 ## 🎯 最佳实践
 
-1. **内存管理**: 框架自动缓存页面以提高性能。如需要，请在页面视图中实现适当的清理逻辑。
+1. **内存管理**: 框架会缓存已创建的页面以提升性能，但**不会自动清理或释放页面**。如果页面内容较重或有特殊内存需求，请在你的页面视图中自行实现资源释放或清理逻辑（如在页面被移除时手动释放大对象等）。
 
 2. **滚动视图设置**: 确保你的滚动视图具有适当的内容大小和约束，以获得最佳滚动行为。
 
