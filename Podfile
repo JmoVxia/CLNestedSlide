@@ -10,5 +10,7 @@ target 'CLNestedSlide' do
 
   # Pods for CLNestedSlide
   pod 'SnapKit'
+  pod 'LookinServer', :subspecs => ['Swift'], :configurations => ['Debug']
+
 
 end

@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import SnapKit
 
 // MARK: - CLMultiGestureScrollView
 
@@ -149,40 +150,6 @@ public class CLNestedSlideView: UIView {
         set { contentScrollView.isScrollEnabled = newValue }
     }
     
-    // MARK: - 主堆栈视图布局控制
-    
-    /// 主堆栈视图间距
-    public var mainStackSpacing: CGFloat {
-        get { mainStackView.spacing }
-        set { mainStackView.spacing = newValue }
-    }
-    /// 主堆栈视图边距
-    public var mainStackMargins: UIEdgeInsets {
-        get { mainStackView.layoutMargins }
-        set { mainStackView.layoutMargins = newValue }
-    }
-    /// 顶部堆栈视图间距
-    public var topStackSpacing: CGFloat {
-        get { topStackView.spacing }
-        set { topStackView.spacing = newValue }
-    }
-    /// 顶部堆栈视图边距
-    public var topStackMargins: UIEdgeInsets {
-        get { topStackView.layoutMargins }
-        set { topStackView.layoutMargins = newValue }
-    }
-    /// 内容页面之间的间距
-    public var pageSpacing: CGFloat {
-        get { contentStackView.spacing }
-        set { contentStackView.spacing = newValue }
-    }
-    /// 内容堆栈视图边距
-    public var contentStackMargins: UIEdgeInsets {
-        get { contentStackView.layoutMargins }
-        set { contentStackView.layoutMargins = newValue }
-    }
-    
-    
     // MARK: - 私有属性
     
     /// 主滚动视图，支持垂直滚动
@@ -234,18 +201,6 @@ public class CLNestedSlideView: UIView {
     
     /// 顶部堆栈视图，包含头部和悬停视图
     private lazy var topStackView: UIStackView = {
-        let stackView = UIStackView()
-        stackView.axis = .vertical
-        stackView.distribution = .fill
-        stackView.alignment = .fill
-        stackView.spacing = 0
-        stackView.insetsLayoutMarginsFromSafeArea = false
-        stackView.isLayoutMarginsRelativeArrangement = true
-        return stackView
-    }()
-    
-    /// 底部堆栈视图，包含内容滚动视图
-    private lazy var bottomStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .vertical
         stackView.distribution = .fill
@@ -342,43 +297,24 @@ private extension CLNestedSlideView {
         addSubview(mainScrollView)
         mainScrollView.addSubview(mainStackView)
         mainStackView.addArrangedSubview(topStackView)
-        mainStackView.addArrangedSubview(bottomStackView)
-        bottomStackView.addArrangedSubview(contentScrollView)
-        
+        mainStackView.addArrangedSubview(contentScrollView)
         contentScrollView.addSubview(contentStackView)
     }
     
     /// 设置约束
     func setupConstraints() {
-        mainScrollView.translatesAutoresizingMaskIntoConstraints = false
-        mainStackView.translatesAutoresizingMaskIntoConstraints = false
-        bottomStackView.translatesAutoresizingMaskIntoConstraints = false
-        contentStackView.translatesAutoresizingMaskIntoConstraints = false
-        
-        NSLayoutConstraint.activate([
-            // mainScrollView 约束
-            mainScrollView.topAnchor.constraint(equalTo: topAnchor),
-            mainScrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            mainScrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            mainScrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
-            
-            // mainStackView 约束
-            mainStackView.topAnchor.constraint(equalTo: mainScrollView.topAnchor),
-            mainStackView.leadingAnchor.constraint(equalTo: mainScrollView.leadingAnchor),
-            mainStackView.trailingAnchor.constraint(equalTo: mainScrollView.trailingAnchor),
-            mainStackView.bottomAnchor.constraint(equalTo: mainScrollView.bottomAnchor),
-            mainStackView.widthAnchor.constraint(equalTo: widthAnchor),
-            
-            // bottomStackView 约束
-            bottomStackView.heightAnchor.constraint(equalTo: heightAnchor),
-            
-            // contentStackView 约束
-            contentStackView.topAnchor.constraint(equalTo: contentScrollView.topAnchor),
-            contentStackView.leadingAnchor.constraint(equalTo: contentScrollView.leadingAnchor),
-            contentStackView.trailingAnchor.constraint(equalTo: contentScrollView.trailingAnchor),
-            contentStackView.bottomAnchor.constraint(equalTo: contentScrollView.bottomAnchor),
-            contentStackView.heightAnchor.constraint(equalTo: contentScrollView.heightAnchor)
-        ])
+        mainScrollView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+        mainStackView.snp.makeConstraints { make in
+            make.edges.width.equalToSuperview()
+        }
+        contentScrollView.snp.makeConstraints { make in
+            make.height.equalTo(self)
+        }
+        contentStackView.snp.makeConstraints { make in
+            make.edges.height.equalToSuperview()
+        }
     }
 }
 

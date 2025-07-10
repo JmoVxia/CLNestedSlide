@@ -19,20 +19,7 @@ class ViewController: UIViewController {
     /// 顶部渐变卡片头部
     private lazy var headerView: UIView = {
         let v = UIView()
-        // 渐变背景
-        let gradientLayer = CAGradientLayer()
-        gradientLayer.colors = [UIColor.systemPurple.cgColor, UIColor.systemBlue.cgColor]
-        gradientLayer.startPoint = CGPoint(x: 0, y: 0)
-        gradientLayer.endPoint = CGPoint(x: 1, y: 1)
-        gradientLayer.frame = CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 180)
-        v.layer.insertSublayer(gradientLayer, at: 0)
-        // 圆角和阴影
-        v.layer.cornerRadius = 24
-        v.layer.masksToBounds = false
-        v.layer.shadowColor = UIColor.black.withAlphaComponent(0.15).cgColor
-        v.layer.shadowOffset = CGSize(width: 0, height: 8)
-        v.layer.shadowOpacity = 0.5
-        v.layer.shadowRadius = 16
+        v.backgroundColor = .orange.withAlphaComponent(0.35)
         // 主标题
         let titleLabel = UILabel()
         titleLabel.text = "CLNestedSlide Demo"

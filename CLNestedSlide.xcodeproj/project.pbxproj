@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		1A5DD1FFAA090AAF225018D9 /* Pods_CLNestedSlide.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0AEF1CDC7E4A281BC4A2E8A3 /* Pods_CLNestedSlide.framework */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		0AEF1CDC7E4A281BC4A2E8A3 /* Pods_CLNestedSlide.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_CLNestedSlide.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		4F51960D2E1E2F1B00818EEA /* CLNestedSlide.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CLNestedSlide.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -39,6 +43,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1A5DD1FFAA090AAF225018D9 /* Pods_CLNestedSlide.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -129,8 +134,6 @@
 			);
 			mainGroup = 4F5196042E1E2F1B00818EEA;
 			minimizedProjectReferenceProxies = 1;
-			packageReferences = (
-			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4F51960E2E1E2F1B00818EEA /* Products */;
 			projectDirPath = "";
@@ -160,13 +163,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-CLNestedSlide/Pods-CLNestedSlide-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-CLNestedSlide/Pods-CLNestedSlide-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
