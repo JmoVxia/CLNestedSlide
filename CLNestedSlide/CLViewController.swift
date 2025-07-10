@@ -62,7 +62,7 @@ class ViewController: UIViewController {
     private func setupUI() {
         view.addSubview(nestedSlideView)
         nestedSlideView.snp.makeConstraints { make in make.edges.equalToSuperview() }
-        headerView.snp.makeConstraints { make in make.height.equalTo(180) }
+        headerView.snp.makeConstraints { make in make.height.equalTo(240) }
         segmentedBar.snp.makeConstraints { make in make.height.equalTo(60) }
         nestedSlideView.headerView = headerView
         nestedSlideView.hoverView = segmentedBar
@@ -73,8 +73,7 @@ class ViewController: UIViewController {
 extension ViewController: CLNestedSlideViewDataSource {
     func numberOfPages(in nestedSlideView: CLNestedSlideView) -> Int { pageData.count }
     func nestedSlideView(_ nestedSlideView: CLNestedSlideView, pageFor index: Int) -> CLNestedSlideViewPage {
-        let data = pageData[index]
-        return CLDemoPageView(title: data.0, content: data.1, bgColor: data.2)
+        return CLPageView()
     }
 }
 

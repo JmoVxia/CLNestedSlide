@@ -233,6 +233,8 @@ public class CLNestedSlideView: UIView {
     private var isSwipeEnabled = true
     /// 是否启用懒加载模式（初始化后不可修改）
     private let isLazyLoading: Bool
+    /// MainScrollView 上一次的偏移量
+    private var lastMainScrollViewOffsetY: CGFloat = 0
     
     // MARK: - 初始化
     
@@ -431,8 +433,9 @@ private extension CLNestedSlideView {
 
 extension CLNestedSlideView: UIScrollViewDelegate {
     public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
-        guard scrollView == contentScrollView else { return }
-        mainScrollView.isScrollEnabled = false
+        if scrollView == mainScrollView {
+            lastMainScrollViewOffsetY = scrollView.contentOffset.y
+        }
     }
     
     public func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
@@ -464,16 +467,33 @@ extension CLNestedSlideView: UIScrollViewDelegate {
             delegate?.contentScrollViewDidScroll(self, scrollView: scrollView, progress: progress)
             return
         }
+        
         guard scrollView.contentSize.height > 0 else { return }
+        
         let maxOffset = (headerView?.bounds.height) ?? 0
+        let offsetY = scrollView.contentOffset.y
+        
         if !isSwipeEnabled {
             scrollView.contentOffset.y = maxOffset
             visiblePage?.isSwipeEnabled = true
-        } else if scrollView.contentOffset.y >= maxOffset {
+        } else if offsetY >= maxOffset {
             scrollView.contentOffset.y = maxOffset
             isSwipeEnabled = false
             visiblePage?.isSwipeEnabled = true
+        } else {
+            visiblePage?.isSwipeEnabled = false
         }
+        
+        let deltaY = offsetY - lastMainScrollViewOffsetY
+        if deltaY > 0, let pageScrollView = visiblePage?.scrollView {
+            var pageOffset = pageScrollView.contentOffset
+            let maxPageOffsetY = pageScrollView.contentSize.height - pageScrollView.bounds.height
+            pageOffset.y += deltaY
+            pageOffset.y = max(0, min(pageOffset.y, maxPageOffsetY < 0 ? 0 : maxPageOffsetY))
+            pageScrollView.contentOffset = pageOffset
+        }
+
+        lastMainScrollViewOffsetY = scrollView.contentOffset.y
     }
 }
 
