@@ -34,6 +34,7 @@ private extension CLDemoPageView {
         innerScrollView.backgroundColor = .clear
         innerScrollView.showsVerticalScrollIndicator = true
         innerScrollView.alwaysBounceVertical = true
+        innerScrollView.contentInsetAdjustmentBehavior = .never
         // 顶部 SF Symbol 图标
         iconView.image = UIImage(systemName: "sparkles")
         iconView.tintColor = bgColor.withAlphaComponent(0.8)

@@ -108,7 +108,7 @@ public class CLNestedSlideView: UIView {
     public var headerView: UIView? {
         didSet {
             guard headerView != oldValue else { return }
-            updateStackView(topStackView, with: headerView, oldValue: oldValue)
+            updateStackView(headStackView, with: headerView, oldValue: oldValue, at: 0)
         }
     }
     
@@ -116,7 +116,7 @@ public class CLNestedSlideView: UIView {
     public var hoverView: UIView? {
         didSet {
             guard hoverView != oldValue else { return }
-            updateStackView(topStackView, with: hoverView, oldValue: oldValue)
+            updateStackView(bottomStackView, with: hoverView, oldValue: oldValue, at: 0)
         }
     }
     
@@ -163,6 +163,7 @@ public class CLNestedSlideView: UIView {
     /// 内容滚动视图，支持水平分页滚动
     private lazy var contentScrollView: CLObservingScrollView = {
         let scrollView = CLObservingScrollView()
+        scrollView.contentInsetAdjustmentBehavior = .never
         scrollView.delegate = self
         scrollView.isPagingEnabled = true
         scrollView.bounces = false
@@ -173,18 +174,6 @@ public class CLNestedSlideView: UIView {
             self.scrollToPage(at: self.currentPageIndex, animated: false)
         }
         return scrollView
-    }()
-    
-    /// 水平堆栈视图，管理页面布局和自动撑开 contentSize
-    private lazy var contentStackView: UIStackView = {
-        let stackView = UIStackView()
-        stackView.axis = .horizontal
-        stackView.distribution = .fill
-        stackView.alignment = .fill
-        stackView.spacing = 0
-        stackView.insetsLayoutMarginsFromSafeArea = false
-        stackView.isLayoutMarginsRelativeArrangement = true
-        return stackView
     }()
     
     /// 主堆栈视图，包含顶部和底部堆栈
@@ -199,10 +188,34 @@ public class CLNestedSlideView: UIView {
         return stackView
     }()
     
-    /// 顶部堆栈视图，包含头部和悬停视图
-    private lazy var topStackView: UIStackView = {
+    /// 头部堆栈视图
+    private lazy var headStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .vertical
+        stackView.distribution = .fill
+        stackView.alignment = .fill
+        stackView.spacing = 0
+        stackView.insetsLayoutMarginsFromSafeArea = false
+        stackView.isLayoutMarginsRelativeArrangement = true
+        return stackView
+    }()
+    
+    /// 底部堆栈视图
+    private lazy var bottomStackView: UIStackView = {
+        let stackView = UIStackView()
+        stackView.axis = .vertical
+        stackView.distribution = .fill
+        stackView.alignment = .fill
+        stackView.spacing = 0
+        stackView.insetsLayoutMarginsFromSafeArea = false
+        stackView.isLayoutMarginsRelativeArrangement = true
+        return stackView
+    }()
+    
+    /// 水平堆栈视图，管理页面布局和自动撑开 contentSize
+    private lazy var contentStackView: UIStackView = {
+        let stackView = UIStackView()
+        stackView.axis = .horizontal
         stackView.distribution = .fill
         stackView.alignment = .fill
         stackView.spacing = 0
@@ -296,8 +309,9 @@ private extension CLNestedSlideView {
     func setupUI() {
         addSubview(mainScrollView)
         mainScrollView.addSubview(mainStackView)
-        mainStackView.addArrangedSubview(topStackView)
-        mainStackView.addArrangedSubview(contentScrollView)
+        mainStackView.addArrangedSubview(headStackView)
+        mainStackView.addArrangedSubview(bottomStackView)
+        bottomStackView.addArrangedSubview(contentScrollView)
         contentScrollView.addSubview(contentStackView)
     }
     
@@ -309,8 +323,8 @@ private extension CLNestedSlideView {
         mainStackView.snp.makeConstraints { make in
             make.edges.width.equalToSuperview()
         }
-        contentScrollView.snp.makeConstraints { make in
-            make.height.equalTo(self)
+        bottomStackView.snp.makeConstraints { make in
+           make.height.equalTo(self)
         }
         contentStackView.snp.makeConstraints { make in
             make.edges.height.equalToSuperview()
@@ -354,11 +368,11 @@ private extension CLNestedSlideView {
         for index in 0..<pageCount {
             let page = dataSource.nestedSlideView(self, pageFor: index)
             page.translatesAutoresizingMaskIntoConstraints = false
-            page.isSwipeEnabled = topStackView.arrangedSubviews.isEmpty
+            page.isSwipeEnabled = headStackView.arrangedSubviews.isEmpty
             page.superScrollEnabledHandler = { [weak self] isEnabled in
                 guard let self = self else { return true }
                 self.isSwipeEnabled = isEnabled
-                return self.topStackView.arrangedSubviews.isEmpty
+                return self.headStackView.arrangedSubviews.isEmpty
             }
             page.setupScrollViewDelegateIfNeeded()
             contentStackView.addArrangedSubview(page)
@@ -381,11 +395,11 @@ private extension CLNestedSlideView {
             return
         }
         let page = pageCache[index] ?? dataSource.nestedSlideView(self, pageFor: index)
-        page.isSwipeEnabled = topStackView.arrangedSubviews.isEmpty
+        page.isSwipeEnabled = headStackView.arrangedSubviews.isEmpty
         page.superScrollEnabledHandler = { [weak self] isEnabled in
             guard let self = self else { return true }
             self.isSwipeEnabled = isEnabled
-            return self.topStackView.arrangedSubviews.isEmpty
+            return self.headStackView.arrangedSubviews.isEmpty
         }
         page.setupScrollViewDelegateIfNeeded()
         let placeholder = placeholderViews[index]
@@ -409,10 +423,20 @@ private extension CLNestedSlideView {
     ///   - stackView: 目标堆栈视图
     ///   - newView: 新视图
     ///   - oldValue: 旧视图
-    func updateStackView(_ stackView: UIStackView, with newView: UIView?, oldValue: UIView?) {
+    func updateStackView(_ stackView: UIStackView, with newView: UIView?, oldValue: UIView?, at stackIndex: Int) {
         guard newView !== oldValue else { return }
-        if let oldValue = oldValue { stackView.removeArrangedSubview(oldValue); oldValue.removeFromSuperview() }
-        if let newView = newView { stackView.addArrangedSubview(newView) }
+        
+        // 移除旧的视图
+        if let oldValue = oldValue, stackView.arrangedSubviews.contains(oldValue) {
+            stackView.removeArrangedSubview(oldValue)
+            oldValue.removeFromSuperview()
+        }
+        
+        // 添加新的视图（防止重复添加 + 越界处理）
+        if let newView = newView, !stackView.arrangedSubviews.contains(newView) {
+            let safeIndex = min(stackIndex, stackView.arrangedSubviews.count)
+            stackView.insertArrangedSubview(newView, at: safeIndex)
+        }
     }
 }
 
@@ -454,7 +478,7 @@ extension CLNestedSlideView: UIScrollViewDelegate {
             return
         }
         guard scrollView.contentSize.height > 0 else { return }
-        let maxOffset = headerView?.bounds.height ?? 0
+        let maxOffset = (headerView?.bounds.height) ?? 0
         if !isSwipeEnabled {
             scrollView.contentOffset.y = maxOffset
             visiblePage?.isSwipeEnabled = true
