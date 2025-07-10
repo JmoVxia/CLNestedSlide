@@ -11,6 +11,8 @@ class CLSegmentedBar: UIView {
     var onSelect: ((Int) -> Void)?
     var normalColor: UIColor = .label
     var activeColor: UIColor = .systemOrange
+    /// 选中标签放大倍数
+    private let scaleFactor: CGFloat = 1.125 // 对应 16 -> 18
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
@@ -20,6 +22,7 @@ class CLSegmentedBar: UIView {
         self.titles = titles
         setupLabels()
     }
+    /// 外部在滑动/点击结束后调用，切换到最终状态
     func setSelectedIndex(_ index: Int, animated: Bool = true) {
         guard index < titleLabels.count else { return }
         selectedIndex = index
@@ -45,14 +48,16 @@ class CLSegmentedBar: UIView {
             if i == baseIndex {
                 let progress = 1.0 - abs(offset)
                 label.textColor = interpolateColor(from: normalColor, to: activeColor, progress: progress)
-                label.font = .systemFont(ofSize: 16, weight: progress > 0.5 ? .semibold : .medium)
+                let scale = 1 + (scaleFactor - 1) * progress
+                label.transform = CGAffineTransform(scaleX: scale, y: scale)
             } else if i == targetIndex && baseIndex != targetIndex {
                 let progress = abs(offset)
                 label.textColor = interpolateColor(from: normalColor, to: activeColor, progress: progress)
-                label.font = .systemFont(ofSize: 16, weight: progress > 0.5 ? .semibold : .medium)
+                let scale = 1 + (scaleFactor - 1) * progress
+                label.transform = CGAffineTransform(scaleX: scale, y: scale)
             } else {
                 label.textColor = normalColor
-                label.font = .systemFont(ofSize: 16, weight: .medium)
+                label.transform = .identity
             }
         }
     }
@@ -100,9 +105,15 @@ class CLSegmentedBar: UIView {
         stackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
         for (index, title) in titles.enumerated() {
             let label = UILabel()
-            label.text = title
             label.font = .systemFont(ofSize: 16, weight: .medium)
-            label.textColor = index == 0 ? activeColor : normalColor
+            if index == selectedIndex {
+                label.textColor = activeColor
+                label.transform = CGAffineTransform(scaleX: scaleFactor, y: scaleFactor)
+            } else {
+                label.textColor = normalColor
+                label.transform = .identity
+            }
+            label.text = title
             label.textAlignment = .center
             label.isUserInteractionEnabled = true
             label.highlightedTextColor = nil
@@ -118,17 +129,17 @@ class CLSegmentedBar: UIView {
     }
     @objc private func labelTapped(_ gesture: UITapGestureRecognizer) {
         guard let label = gesture.view as? UILabel else { return }
-        setSelectedIndex(label.tag)
+        // 点击时只触发外部滚动，不立即更新外观，避免先变黑再过渡
         onSelect?(label.tag)
     }
     private func updateAppearance(for index: Int) {
         for (i, label) in titleLabels.enumerated() {
             if i == index {
                 label.textColor = activeColor
-                label.font = .systemFont(ofSize: 18, weight: .bold)
+                label.transform = CGAffineTransform(scaleX: scaleFactor, y: scaleFactor)
             } else {
                 label.textColor = normalColor
-                label.font = .systemFont(ofSize: 16, weight: .medium)
+                label.transform = .identity
             }
         }
     }
