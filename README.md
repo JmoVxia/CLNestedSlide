@@ -10,7 +10,6 @@
 - **🎯 自动代理拦截**: 零配置的滚动视图代理转发
 - **⚡ 高性能**: 支持懒加载模式，内存友好
 - **🔧 灵活布局**: 完全自定义的布局控制和边距设置
-- **📐 旋转适配**: 自动处理横竖屏切换时的内容偏移修正
 - **🎨 现代架构**: 基于协议的设计，易于集成和扩展
 - **🔄 横竖屏支持**: 内置横竖屏旋转支持，自动适配布局
 - **📦 多种滚动视图**: 只要页面视图实现 CLNestedSlideViewPage 协议（如 UITableView、UICollectionView、UIScrollView 等），即可集成，框架本身不内置特殊适配
@@ -286,31 +285,6 @@ let nestedSlideView = CLNestedSlideView(isLazyLoading: false)
 
 **注意**: 加载模式必须在初始化时设置，之后无法更改。
 
-## 📐 布局控制
-
-### 堆栈视图间距和边距
-
-```swift
-// 主堆栈视图（整体布局）
-nestedSlideView.mainStackSpacing = 10.0
-nestedSlideView.mainStackMargins = UIEdgeInsets(top: 20, left: 16, bottom: 20, right: 16)
-
-// 顶部堆栈视图（headerView 和 hoverView）
-nestedSlideView.topStackSpacing = 5.0
-nestedSlideView.topStackMargins = UIEdgeInsets(top: 10, left: 8, bottom: 10, right: 8)
-
-// 内容堆栈视图（页面之间）
-nestedSlideView.pageSpacing = 0.0
-nestedSlideView.contentStackMargins = UIEdgeInsets.zero
-```
-
-### 滚动控制
-
-```swift
-// 控制是否允许横向滑动
-nestedSlideView.isHorizontalScrollEnabled = true
-```
-
 ## 📚 公共属性和方法
 
 ### 页面管理
@@ -347,21 +321,6 @@ var hoverView: UIView?
 
 // 是否允许横向滑动
 var isHorizontalScrollEnabled: Bool
-```
-
-### 布局控制
-```swift
-// 主堆栈视图布局控制
-var mainStackSpacing: CGFloat
-var mainStackMargins: UIEdgeInsets
-
-// 顶部堆栈视图布局控制
-var topStackSpacing: CGFloat
-var topStackMargins: UIEdgeInsets
-
-// 内容页面之间的间距
-var pageSpacing: CGFloat
-var contentStackMargins: UIEdgeInsets
 ```
 
 ## 🏗 架构设计
@@ -452,7 +411,7 @@ protocol CLNestedSlideViewPage: AnyObject where Self: UIView {
 
 ## 🔧 安全区域处理
 
-所有内部堆栈视图都设置了 `insetsLayoutMarginsFromSafeArea = false` 和 `isLayoutMarginsRelativeArrangement = true`，让你完全控制布局，无需自动安全区域调整。如果需要，你可以通过布局边距属性手动处理安全区域。
+所有内部堆栈视图都设置了 `insetsLayoutMarginsFromSafeArea = false` ，让你完全控制布局。如果需要，你可以手动处理安全区域。
 
 ## 📱 Demo 项目
 
