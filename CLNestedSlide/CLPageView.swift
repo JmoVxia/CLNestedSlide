@@ -30,6 +30,7 @@ class CLPageView: UIView, CLNestedSlideViewPage {
 
 private extension CLPageView {
     func setupUI() {
+        tableView.bounces = false
         tableView.dataSource = self
         tableView.delegate = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "Cell")

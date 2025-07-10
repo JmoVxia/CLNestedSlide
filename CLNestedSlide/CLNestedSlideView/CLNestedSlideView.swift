@@ -1,22 +1,7 @@
-//
-//  NestedSlideView.swift
-//  NestedSlideView
-//
-//  Created by Chen JmoVxia on 2024/7/1.
-//  Copyright © 2024 JmoVxia. All rights reserved.
-//
-
 import UIKit
 import SnapKit
 
-// MARK: - CLMultiGestureScrollView
-
-/// 支持多手势同时识别的滚动视图
-/// 仅在 CLNestedSlideView 框架内部使用
 fileprivate class CLMultiGestureScrollView: UIScrollView {
-    
-    // MARK: - 初始化
-    
     override init(frame: CGRect) {
         super.init(frame: frame)
     }
@@ -27,84 +12,42 @@ fileprivate class CLMultiGestureScrollView: UIScrollView {
     }
 }
 
-// MARK: - UIGestureRecognizerDelegate
-
 extension CLMultiGestureScrollView: UIGestureRecognizerDelegate {
-    /// 允许与其他手势识别器同时识别
-    /// - Parameters:
-    ///   - gestureRecognizer: 当前手势识别器
-    ///   - otherGestureRecognizer: 其他手势识别器
-    /// - Returns: 始终返回 true 以允许同时识别
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
         return true
     }
 }
 
-// MARK: - CLObservingScrollView
-
-/// 支持 contentSize 变化监听的滚动视图，仅在 CLNestedSlideView 内部使用
 fileprivate class CLObservingScrollView: UIScrollView {
-    var onContentSizeChanged: ((CGSize) -> Void)?
+    var contentSizeChangedHandler: ((CGSize) -> Void)?
+    
     override var contentSize: CGSize {
         didSet {
             guard oldValue != contentSize else { return }
-            onContentSizeChanged?(contentSize)
+            contentSizeChangedHandler?(contentSize)
         }
     }
 }
 
-// MARK: - CLNestedSlideViewDataSource
-
-/// 嵌套滑动视图数据源协议
 public protocol CLNestedSlideViewDataSource: AnyObject {
-    /// 返回嵌套滑动视图中的页面数量
-    /// - Parameter nestedSlideView: 嵌套滑动视图实例
-    /// - Returns: 页面数量
     func numberOfPages(in nestedSlideView: CLNestedSlideView) -> Int
-    
-    /// 返回指定索引的页面视图
-    /// - Parameters:
-    ///   - nestedSlideView: 嵌套滑动视图实例
-    ///   - index: 页面索引
-    /// - Returns: 符合 NestedSlideViewPage 协议的视图
     func nestedSlideView(_ nestedSlideView: CLNestedSlideView, pageFor index: Int) -> CLNestedSlideViewPage
 }
 
-// MARK: - CLNestedSlideViewDelegate
-
-/// 嵌套滑动视图代理协议
 public protocol CLNestedSlideViewDelegate: AnyObject {
-    /// 页面滑动过程中调用（实时回调）
-    /// - Parameters:
-    ///   - nestedSlideView: 嵌套滑动视图实例
-    ///   - scrollView: 内容滚动视图
-    ///   - progress: 滑动进度（0.0 到 页面数-1）
     func contentScrollViewDidScroll(_ nestedSlideView: CLNestedSlideView, scrollView: UIScrollView, progress: CGFloat)
-    
-    /// 当内容滚动到指定页面时调用
-    /// - Parameter index: 当前页面索引
     func contentScrollViewDidScrollToPage(at index: Int)
 }
 
-// MARK: - CLNestedSlideViewDelegate 默认实现
-
 public extension CLNestedSlideViewDelegate {
-    /// 页面滑动过程中的默认实现（可选）
-    func contentScrollViewDidScroll(_ nestedSlideView: CLNestedSlideView, scrollView: UIScrollView, progress: CGFloat) {
-        // 默认空实现，子类可选择实现
-    }
-    
+    func contentScrollViewDidScroll(_ nestedSlideView: CLNestedSlideView, scrollView: UIScrollView, progress: CGFloat) {}
     func contentScrollViewDidScrollToPage(at index: Int) {}
 }
 
-// MARK: - CLNestedSlideView
-
-/// 提供嵌套滚动功能的视图，包含头部视图、悬停视图和分页内容
 public class CLNestedSlideView: UIView {
     
-    // MARK: - 公共属性
+    // MARK: - Public Properties
     
-    /// 顶部头部视图
     public var headerView: UIView? {
         didSet {
             guard headerView != oldValue else { return }
@@ -112,7 +55,6 @@ public class CLNestedSlideView: UIView {
         }
     }
     
-    /// 滚动时保持可见的悬停视图
     public var hoverView: UIView? {
         didSet {
             guard hoverView != oldValue else { return }
@@ -120,39 +62,48 @@ public class CLNestedSlideView: UIView {
         }
     }
     
-    /// 嵌套滑动视图的数据源
     public weak var dataSource: CLNestedSlideViewDataSource?
-    
-    /// 嵌套滑动视图的代理
     public weak var delegate: CLNestedSlideViewDelegate?
     
-    /// 当前是否启用懒加载模式（只读）
     public var isLazyLoadingEnabled: Bool { isLazyLoading }
+    public var numberOfPages: Int { pageCount }
+    public var currentPage: CLNestedSlideViewPage? { visiblePage }
     
-    /// 当前页面索引
     public var currentPageIndex: Int {
         get { currentIndex }
         set {
-            let targetIndex = min(max(newValue, 0), pageCount - 1)
-            if targetIndex != currentIndex { scrollToPage(at: targetIndex, animated: false) }
+            let targetIndex = clampIndex(newValue)
+            if targetIndex != currentIndex { 
+                scrollToPage(at: targetIndex, animated: false) 
+            }
         }
     }
     
-    /// 总页数
-    public var numberOfPages: Int { pageCount }
-    
-    /// 当前可见页面
-    public var currentPage: CLNestedSlideViewPage? { visiblePage }
-    
-        /// 是否允许横向滑动
     public var isHorizontalScrollEnabled: Bool {
         get { contentScrollView.isScrollEnabled }
         set { contentScrollView.isScrollEnabled = newValue }
     }
     
-    // MARK: - 私有属性
+    // MARK: - Private Properties
     
-    /// 主滚动视图，支持垂直滚动
+    private let isLazyLoading: Bool
+    private var currentIndex = 0 {
+        didSet {
+            guard currentIndex != oldValue else { return }
+            loadPage(at: currentIndex)
+            delegate?.contentScrollViewDidScrollToPage(at: currentIndex)
+        }
+    }
+    private var visiblePage: CLNestedSlideViewPage?
+    private var pageCache = [Int: CLNestedSlideViewPage]()
+    private var placeholderViews = [UIView]()
+    private var pageCount = 0
+    private var isSwipeEnabled = true
+    private var lastMainScrollOffsetY: CGFloat = 0
+    private var lastScrollIndicatorState: (main: Bool, page: Bool) = (true, false)
+    
+    // MARK: - UI Components
+    
     private lazy var mainScrollView: CLMultiGestureScrollView = {
         let scrollView = CLMultiGestureScrollView()
         scrollView.delegate = self
@@ -160,7 +111,6 @@ public class CLNestedSlideView: UIView {
         return scrollView
     }()
     
-    /// 内容滚动视图，支持水平分页滚动
     private lazy var contentScrollView: CLObservingScrollView = {
         let scrollView = CLObservingScrollView()
         scrollView.contentInsetAdjustmentBehavior = .never
@@ -169,14 +119,13 @@ public class CLNestedSlideView: UIView {
         scrollView.bounces = false
         scrollView.showsVerticalScrollIndicator = false
         scrollView.showsHorizontalScrollIndicator = false
-        scrollView.onContentSizeChanged = { [weak self] _ in
+        scrollView.contentSizeChangedHandler = { [weak self] _ in
             guard let self = self else { return }
             self.scrollToPage(at: self.currentPageIndex, animated: false)
         }
         return scrollView
     }()
     
-    /// 主堆栈视图，包含顶部和底部堆栈
     private lazy var mainStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .vertical
@@ -188,7 +137,6 @@ public class CLNestedSlideView: UIView {
         return stackView
     }()
     
-    /// 底部堆栈视图
     private lazy var bodyStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .vertical
@@ -200,7 +148,6 @@ public class CLNestedSlideView: UIView {
         return stackView
     }()
     
-    /// 水平堆栈视图，管理页面布局和自动撑开 contentSize
     private lazy var pageStackView: UIStackView = {
         let stackView = UIStackView()
         stackView.axis = .horizontal
@@ -212,31 +159,7 @@ public class CLNestedSlideView: UIView {
         return stackView
     }()
     
-    /// 当前页面索引
-    private var currentIndex = 0 {
-        didSet {
-            guard currentIndex != oldValue else { return }
-            loadPage(at: currentIndex)
-            delegate?.contentScrollViewDidScrollToPage(at: currentIndex)
-        }
-    }
-    
-    /// 当前可见的页面
-    private var visiblePage: CLNestedSlideViewPage?
-    /// 页面缓存
-    private var pageCache = [Int: CLNestedSlideViewPage]()
-    /// 占位 UIView 数组，用于未加载的页面
-    private var placeholderViews = [UIView]()
-    /// 页面总数
-    private var pageCount = 0
-    /// 是否允许滑动
-    private var isSwipeEnabled = true
-    /// 是否启用懒加载模式（初始化后不可修改）
-    private let isLazyLoading: Bool
-    /// MainScrollView 上一次的偏移量
-    private var lastMainScrollViewOffsetY: CGFloat = 0
-    
-    // MARK: - 初始化
+    // MARK: - Initialization
     
     public init(frame: CGRect = .zero, isLazyLoading: Bool = true) {
         self.isLazyLoading = isLazyLoading
@@ -259,52 +182,59 @@ public class CLNestedSlideView: UIView {
         setupConstraints()
     }
     
-    // MARK: - 公共方法
+    // MARK: - Public Methods
     
-    /// 重新加载所有页面并刷新视图
     public func reload() {
         guard let dataSource = dataSource else { return }
         guard pageCount != dataSource.numberOfPages(in: self) || pageCache.isEmpty else { return }
+        
         pageCount = dataSource.numberOfPages(in: self)
         if !isLazyLoading { pageCache.removeAll() }
         setupPlaceholderViews()
+        
         guard pageCount > 0 else { return }
         currentIndex = min(currentIndex, pageCount - 1)
         loadPage(at: currentIndex)
     }
     
-    /// 滚动到指定页面
-    /// - Parameters:
-    ///   - index: 目标页面索引
-    ///   - animated: 是否使用动画过渡
     public func scrollToPage(at index: Int, animated: Bool) {
-        let targetIndex = min(max(index, 0), pageCount - 1)
+        let targetIndex = clampIndex(index)
         guard targetIndex < placeholderViews.count else { return }
+        
         if isLazyLoading { loadPage(at: targetIndex) }
         let targetOffset = CGPoint(x: CGFloat(targetIndex) * bounds.width, y: 0)
         contentScrollView.setContentOffset(targetOffset, animated: animated)
     }
     
-    /// 获取指定索引的页面（懒加载模式下可能返回 nil）
     public func page(at index: Int) -> CLNestedSlideViewPage? {
-        guard index >= 0, index < pageCount, index < placeholderViews.count else { return nil }
+        guard isValidIndex(index) else { return nil }
         return isLazyLoading ? pageCache[index] : (placeholderViews[index] as? CLNestedSlideViewPage)
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func clampIndex(_ index: Int) -> Int {
+        return min(max(index, 0), pageCount - 1)
+    }
+    
+    private func isValidIndex(_ index: Int) -> Bool {
+        return index >= 0 && index < pageCount && index < placeholderViews.count
     }
 }
 
-// MARK: - 私有设置方法
+// MARK: - UI Setup
 
 private extension CLNestedSlideView {
-    /// 设置用户界面
     func setupUI() {
         addSubview(mainScrollView)
         mainScrollView.addSubview(mainStackView)
         mainStackView.addArrangedSubview(bodyStackView)
         bodyStackView.addArrangedSubview(contentScrollView)
         contentScrollView.addSubview(pageStackView)
+        
+        contentScrollView.panGestureRecognizer.addTarget(self, action: #selector(handleContentPan(_:)))
     }
     
-    /// 设置约束
     func setupConstraints() {
         mainScrollView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
@@ -321,7 +251,25 @@ private extension CLNestedSlideView {
     }
 }
 
-// MARK: - 私有辅助方法
+// MARK: - Gesture Handling
+
+private extension CLNestedSlideView {
+    @objc func handleContentPan(_ gesture: UIPanGestureRecognizer) {
+        let velocity = gesture.velocity(in: contentScrollView)
+        switch gesture.state {
+        case .began:
+            if abs(velocity.x) > abs(velocity.y) {
+                mainScrollView.isScrollEnabled = false
+            }
+        case .ended, .cancelled, .failed:
+            mainScrollView.isScrollEnabled = true
+        default:
+            break
+        }
+    }
+}
+
+// MARK: - Page Management
 
 private extension CLNestedSlideView {
     func setupPlaceholderViews() {
@@ -333,14 +281,10 @@ private extension CLNestedSlideView {
         }
         placeholderViews.removeAll()
         
-        if isLazyLoading {
-            setupLazyLoadingViews()
-        } else {
-            setupEagerLoadingViews(dataSource: dataSource)
-        }
+        isLazyLoading ? setupLazyLoadingViews() : setupEagerLoadingViews(dataSource: dataSource)
     }
     
-    private func setupLazyLoadingViews() {
+    func setupLazyLoadingViews() {
         for _ in 0..<pageCount {
             let placeholder = UIView()
             placeholder.translatesAutoresizingMaskIntoConstraints = false
@@ -348,42 +292,61 @@ private extension CLNestedSlideView {
             
             pageStackView.addArrangedSubview(placeholder)
             placeholderViews.append(placeholder)
-            
             placeholder.widthAnchor.constraint(equalTo: widthAnchor).isActive = true
         }
     }
     
-    private func setupEagerLoadingViews(dataSource: CLNestedSlideViewDataSource) {
+    func setupEagerLoadingViews(dataSource: CLNestedSlideViewDataSource) {
         for index in 0..<pageCount {
             let page = dataSource.nestedSlideView(self, pageFor: index)
-            page.translatesAutoresizingMaskIntoConstraints = false
-            page.isSwipeEnabled = headerView == nil
-            page.superScrollEnabledHandler = { [weak self] isEnabled in
-                guard let self = self else { return true }
-                self.isSwipeEnabled = isEnabled
-                return self.headerView == nil
-            }
-            page.setupScrollViewDelegateIfNeeded()
+            configurePage(page)
+            
             pageStackView.addArrangedSubview(page)
             placeholderViews.append(page)
             pageCache[index] = page
             page.widthAnchor.constraint(equalTo: widthAnchor).isActive = true
         }
-        guard pageCount > 0 else { return }
-        visiblePage = pageCache[min(currentIndex, pageCount - 1)]
+        
+        if pageCount > 0 {
+            visiblePage = pageCache[min(currentIndex, pageCount - 1)]
+        }
     }
+    
     func loadPage(at index: Int) {
-        guard let dataSource = dataSource, index >= 0, index < pageCount, index < placeholderViews.count else { return }
+        guard let dataSource = dataSource, isValidIndex(index) else { return }
+        
         currentIndex = index
         isLazyLoading ? loadPageLazily(at: index, dataSource: dataSource) : loadPageEagerly(at: index)
     }
     
-    private func loadPageLazily(at index: Int, dataSource: CLNestedSlideViewDataSource) {
+    func loadPageLazily(at index: Int, dataSource: CLNestedSlideViewDataSource) {
         if let page = placeholderViews[index] as? CLNestedSlideViewPage {
             visiblePage = page
             return
         }
+        
         let page = pageCache[index] ?? dataSource.nestedSlideView(self, pageFor: index)
+        configurePage(page)
+        
+        let placeholder = placeholderViews[index]
+        pageStackView.removeArrangedSubview(placeholder)
+        placeholder.removeFromSuperview()
+        
+        page.translatesAutoresizingMaskIntoConstraints = false
+        pageStackView.insertArrangedSubview(page, at: index)
+        page.widthAnchor.constraint(equalTo: widthAnchor).isActive = true
+        
+        placeholderViews[index] = page
+        visiblePage = page
+        pageCache[index] = page
+    }
+    
+    func loadPageEagerly(at index: Int) {
+        guard let page = placeholderViews[index] as? CLNestedSlideViewPage else { return }
+        visiblePage = page
+    }
+    
+    func configurePage(_ page: CLNestedSlideViewPage) {
         page.isSwipeEnabled = headerView == nil
         page.superScrollEnabledHandler = { [weak self] isEnabled in
             guard let self = self else { return true }
@@ -391,42 +354,37 @@ private extension CLNestedSlideView {
             return self.headerView == nil
         }
         page.setupScrollViewDelegateIfNeeded()
-        let placeholder = placeholderViews[index]
-        pageStackView.removeArrangedSubview(placeholder)
-        placeholder.removeFromSuperview()
-        page.translatesAutoresizingMaskIntoConstraints = false
-        pageStackView.insertArrangedSubview(page, at: index)
-        page.widthAnchor.constraint(equalTo: widthAnchor).isActive = true
-        placeholderViews[index] = page
-        visiblePage = page
-        pageCache[index] = page
     }
     
-    private func loadPageEagerly(at index: Int) {
-        guard let page = placeholderViews[index] as? CLNestedSlideViewPage else { return }
-        visiblePage = page
-    }
-    
-    /// 更新堆栈视图中的子视图
-    /// - Parameters:
-    ///   - stackView: 目标堆栈视图
-    ///   - newView: 新视图
-    ///   - oldValue: 旧视图
     func updateStackView(_ stackView: UIStackView, with newView: UIView?, oldValue: UIView?, at index: Int) {
         guard newView !== oldValue else { return }
         
-        // 移除旧的视图
         if let oldValue = oldValue, stackView.arrangedSubviews.contains(oldValue) {
             stackView.removeArrangedSubview(oldValue)
             oldValue.removeFromSuperview()
         }
         
-        // 添加新的视图（防止重复添加 + 越界处理）
         if let newView = newView, !stackView.arrangedSubviews.contains(newView) {
             let safeIndex = min(index, stackView.arrangedSubviews.count)
             stackView.insertArrangedSubview(newView, at: safeIndex)
         }
     }
+    
+    func updateCurrentPageIndex(for scrollView: UIScrollView) {
+        guard scrollView == contentScrollView else { return }
+        
+        let width = scrollView.bounds.width
+        guard width > 0 else { return }
+        
+        let newIndex = Int(round(scrollView.contentOffset.x / width))
+        let clampedIndex = clampIndex(newIndex)
+        
+        if clampedIndex != currentIndex {
+            currentIndex = clampedIndex
+        }
+    }
+    
+
 }
 
 // MARK: - UIScrollViewDelegate
@@ -434,7 +392,7 @@ private extension CLNestedSlideView {
 extension CLNestedSlideView: UIScrollViewDelegate {
     public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         if scrollView == mainScrollView {
-            lastMainScrollViewOffsetY = scrollView.contentOffset.y
+            lastMainScrollOffsetY = scrollView.contentOffset.y
         }
     }
     
@@ -445,7 +403,7 @@ extension CLNestedSlideView: UIScrollViewDelegate {
         mainScrollView.isScrollEnabled = true
         
         let targetIndex = Int(round(targetContentOffset.pointee.x / scrollView.bounds.width))
-        let clampedIndex = min(max(targetIndex, 0), pageCount - 1)
+        let clampedIndex = clampIndex(targetIndex)
         targetContentOffset.pointee.x = CGFloat(clampedIndex) * scrollView.bounds.width
     }
     
@@ -460,17 +418,42 @@ extension CLNestedSlideView: UIScrollViewDelegate {
     }
     
     public func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        scrollView.showsVerticalScrollIndicator = (scrollView == mainScrollView)
-        visiblePage?.scrollView.showsVerticalScrollIndicator = (scrollView != mainScrollView)
+        configureScrollIndicators(scrollView)
+        
         if scrollView == contentScrollView {
-            let progress: CGFloat = scrollView.bounds.width > 0 ? scrollView.contentOffset.x / scrollView.bounds.width : 0
-            delegate?.contentScrollViewDidScroll(self, scrollView: scrollView, progress: progress)
+            handleContentScrollViewScroll(scrollView)
             return
         }
         
+        handleMainScrollViewScroll(scrollView)
+    }
+}
+
+// MARK: - Scroll Handling
+
+private extension CLNestedSlideView {
+    func configureScrollIndicators(_ scrollView: UIScrollView) {
+        let isMainScrollView = (scrollView == mainScrollView)
+        let newState = (main: isMainScrollView, page: !isMainScrollView)
+        
+        guard newState.main != lastScrollIndicatorState.main || 
+              newState.page != lastScrollIndicatorState.page else { return }
+        
+        scrollView.showsVerticalScrollIndicator = newState.main
+        visiblePage?.scrollView.showsVerticalScrollIndicator = newState.page
+        lastScrollIndicatorState = newState
+    }
+    
+    func handleContentScrollViewScroll(_ scrollView: UIScrollView) {
+        let width = scrollView.bounds.width
+        let progress: CGFloat = width > 0 ? scrollView.contentOffset.x / width : 0
+        delegate?.contentScrollViewDidScroll(self, scrollView: scrollView, progress: progress)
+    }
+    
+    func handleMainScrollViewScroll(_ scrollView: UIScrollView) {
         guard scrollView.contentSize.height > 0 else { return }
         
-        let maxOffset = (headerView?.bounds.height) ?? 0
+        let maxOffset = headerView?.bounds.height ?? 0
         let offsetY = scrollView.contentOffset.y
         
         if !isSwipeEnabled {
@@ -484,30 +467,18 @@ extension CLNestedSlideView: UIScrollViewDelegate {
             visiblePage?.isSwipeEnabled = false
         }
         
-        let deltaY = offsetY - lastMainScrollViewOffsetY
+        syncPageScrollViewOffset(offsetY)
+        lastMainScrollOffsetY = scrollView.contentOffset.y
+    }
+    
+    func syncPageScrollViewOffset(_ offsetY: CGFloat) {
+        let deltaY = offsetY - lastMainScrollOffsetY
         if deltaY > 0, let pageScrollView = visiblePage?.scrollView {
             var pageOffset = pageScrollView.contentOffset
             let maxPageOffsetY = pageScrollView.contentSize.height - pageScrollView.bounds.height
             pageOffset.y += deltaY
-            pageOffset.y = max(0, min(pageOffset.y, maxPageOffsetY < 0 ? 0 : maxPageOffsetY))
+            pageOffset.y = max(0, min(pageOffset.y, max(0, maxPageOffsetY)))
             pageScrollView.contentOffset = pageOffset
-        }
-
-        lastMainScrollViewOffsetY = scrollView.contentOffset.y
-    }
-}
-
-// MARK: - 私有页面管理
-
-private extension CLNestedSlideView {
-    func updateCurrentPageIndex(for scrollView: UIScrollView) {
-        guard scrollView == contentScrollView && scrollView.bounds.width > 0 else { return }
-        
-        let newIndex = Int(round(scrollView.contentOffset.x / scrollView.bounds.width))
-        let clampedIndex = min(max(newIndex, 0), pageCount - 1)
-        
-        if clampedIndex != currentIndex {
-            currentIndex = clampedIndex
         }
     }
 }
