@@ -61,7 +61,7 @@ class ViewController: UIViewController {
     /// UI布局
     private func setupUI() {
         view.addSubview(nestedSlideView)
-        nestedSlideView.snp.makeConstraints { make in make.edges.equalToSuperview() }
+        nestedSlideView.snp.makeConstraints { make in make.edges.equalTo(view.safeAreaLayoutGuide) }
         headerView.snp.makeConstraints { make in make.height.equalTo(240) }
         segmentedBar.snp.makeConstraints { make in make.height.equalTo(60) }
         nestedSlideView.headerView = headerView

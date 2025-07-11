@@ -455,10 +455,18 @@ private extension CLNestedSlideView {
         
         let maxOffset = headerView?.bounds.height ?? 0
         let offsetY = scrollView.contentOffset.y
+        let isScrollingDown = offsetY < lastMainScrollOffsetY
+        
+        let isPageScrollAtTop = visiblePage?.scrollView.contentOffset.y ?? 0 <= 0
         
         if !isSwipeEnabled {
-            scrollView.contentOffset.y = maxOffset
-            visiblePage?.isSwipeEnabled = true
+            if isScrollingDown && isPageScrollAtTop {
+                isSwipeEnabled = true
+                visiblePage?.isSwipeEnabled = false
+            } else {
+                scrollView.contentOffset.y = maxOffset
+                visiblePage?.isSwipeEnabled = true
+            }
         } else if offsetY >= maxOffset {
             scrollView.contentOffset.y = maxOffset
             isSwipeEnabled = false
@@ -466,19 +474,6 @@ private extension CLNestedSlideView {
         } else {
             visiblePage?.isSwipeEnabled = false
         }
-        
-        syncPageScrollViewOffset(offsetY)
         lastMainScrollOffsetY = scrollView.contentOffset.y
-    }
-    
-    func syncPageScrollViewOffset(_ offsetY: CGFloat) {
-        let deltaY = offsetY - lastMainScrollOffsetY
-        if deltaY > 0, let pageScrollView = visiblePage?.scrollView {
-            var pageOffset = pageScrollView.contentOffset
-            let maxPageOffsetY = pageScrollView.contentSize.height - pageScrollView.bounds.height
-            pageOffset.y += deltaY
-            pageOffset.y = max(0, min(pageOffset.y, max(0, maxPageOffsetY)))
-            pageScrollView.contentOffset = pageOffset
-        }
     }
 }
