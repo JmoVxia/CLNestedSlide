@@ -32,7 +32,7 @@ pod 'CLNestedSlide'
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/JmoVxia/CLNestedSlide.git", from: "1.0.0")
+    .package(url: "https://github.com/JmoVxia/CLNestedSlide.git", from: "1.0.2")
 ]
 ```
 
@@ -321,6 +321,14 @@ var hoverView: UIView?
 
 // 是否允许横向滑动
 var isHorizontalScrollEnabled: Bool
+
+// 是否显示所有滚动条，默认 true
+var showIndicator: Bool
+```
+
+#### 示例：关闭所有滚动条
+```swift
+nestedSlideView.showIndicator = false // 全部隐藏主/子滚动条
 ```
 
 ## 🏗 架构设计

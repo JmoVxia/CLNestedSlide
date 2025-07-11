@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 
+// MARK: - 滚动代理转发器（内部使用）
 fileprivate class CLScrollViewDelegateProxy: NSObject, UIScrollViewDelegate {
     weak var externalDelegate: UIScrollViewDelegate?
     weak var nestedTarget: CLNestedSlideViewPage?
@@ -27,6 +28,7 @@ fileprivate class CLScrollViewDelegateProxy: NSObject, UIScrollViewDelegate {
     }
 }
 
+// MARK: - 滚动视图包装器（内部使用）
 fileprivate class CLScrollViewWrapper: NSObject {
     weak var scrollView: UIScrollView?
     weak var nestedTarget: CLNestedSlideViewPage?
@@ -72,15 +74,16 @@ fileprivate struct AssociatedKeys {
     static var scrollViewWrapperKey: Void?
 }
 
+// MARK: - 页面协议
 public protocol CLNestedSlideViewPage: AnyObject where Self: UIView {
+    /// 必须实现：返回内部滚动视图
     var scrollView: UIScrollView { get }
 }
 
-public extension CLNestedSlideViewPage {
-    
-    // MARK: - Properties
-    
-    var isSwipeEnabled: Bool {
+// MARK: - 页面协议扩展（框架自动处理）
+extension CLNestedSlideViewPage {
+    /// 是否允许滑动（由框架自动管理）
+    public var isSwipeEnabled: Bool {
         get { 
             objc_getAssociatedObject(self, &AssociatedKeys.isSwipeEnabledKey) as? Bool ?? false 
         }
@@ -88,8 +91,8 @@ public extension CLNestedSlideViewPage {
             objc_setAssociatedObject(self, &AssociatedKeys.isSwipeEnabledKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) 
         }
     }
-    
-    var superScrollEnabledHandler: ((Bool) -> Bool)? {
+    /// 父级滑动状态回调（由框架自动管理）
+    public var superScrollEnabledHandler: ((Bool) -> Bool)? {
         get { 
             objc_getAssociatedObject(self, &AssociatedKeys.superScrollEnabledHandlerKey) as? ((Bool) -> Bool) 
         }
@@ -97,10 +100,8 @@ public extension CLNestedSlideViewPage {
             objc_setAssociatedObject(self, &AssociatedKeys.superScrollEnabledHandlerKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC) 
         }
     }
-    
-    // MARK: - Methods
-    
-    func setupScrollViewDelegateIfNeeded() {
+    /// 设置滚动代理（由框架自动调用）
+    public func setupScrollViewDelegateIfNeeded() {
         guard objc_getAssociatedObject(self, &AssociatedKeys.scrollViewWrapperKey) == nil else { return }
         
         let wrapper = CLScrollViewWrapper(scrollView: scrollView, nestedTarget: self)
@@ -108,8 +109,9 @@ public extension CLNestedSlideViewPage {
     }
 }
 
+// MARK: - 内部滚动协调实现
 fileprivate extension CLNestedSlideViewPage {
-    
+    /// 内部滚动事件处理（框架自动调用）
     func handleScrollViewDidScroll(_ scrollView: UIScrollView) {
         guard isSwipeEnabled else {
             scrollView.contentOffset.y = 0
