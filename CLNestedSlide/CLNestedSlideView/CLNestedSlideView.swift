@@ -73,9 +73,8 @@ public class CLNestedSlideView: UIView {
         get { currentIndex }
         set {
             let targetIndex = clampIndex(newValue)
-            if targetIndex != currentIndex { 
-                scrollToPage(at: targetIndex, animated: false) 
-            }
+            guard targetIndex != currentIndex else { return }
+            scrollToPage(at: targetIndex, animated: false)
         }
     }
     
@@ -306,10 +305,8 @@ private extension CLNestedSlideView {
             pageCache[index] = page
             page.widthAnchor.constraint(equalTo: widthAnchor).isActive = true
         }
-        
-        if pageCount > 0 {
-            visiblePage = pageCache[min(currentIndex, pageCount - 1)]
-        }
+        guard pageCount > 0 else { return }
+        visiblePage = pageCache[min(currentIndex, pageCount - 1)]
     }
     
     func loadPage(at index: Int) {
@@ -320,8 +317,8 @@ private extension CLNestedSlideView {
     }
     
     func loadPageLazily(at index: Int, dataSource: CLNestedSlideViewDataSource) {
-        if let page = placeholderViews[index] as? CLNestedSlideViewPage {
-            visiblePage = page
+        guard !(placeholderViews[index] is CLNestedSlideViewPage) else {
+            visiblePage = placeholderViews[index] as? CLNestedSlideViewPage
             return
         }
         
@@ -378,13 +375,9 @@ private extension CLNestedSlideView {
         
         let newIndex = Int(round(scrollView.contentOffset.x / width))
         let clampedIndex = clampIndex(newIndex)
-        
-        if clampedIndex != currentIndex {
-            currentIndex = clampedIndex
-        }
+        guard clampedIndex != currentIndex else { return }
+        currentIndex = clampedIndex
     }
-    
-
 }
 
 // MARK: - UIScrollViewDelegate
@@ -432,16 +425,67 @@ extension CLNestedSlideView: UIScrollViewDelegate {
 // MARK: - Scroll Handling
 
 private extension CLNestedSlideView {
-    func configureScrollIndicators(_ scrollView: UIScrollView) {
-        let isMainScrollView = (scrollView == mainScrollView)
-        let newState = (main: isMainScrollView, page: !isMainScrollView)
-        
-        guard newState.main != lastScrollIndicatorState.main || 
+    
+    enum ActiveScrollView {
+        case main
+        case page
+        case none
+    }
+    
+    func calculateScrollIndicatorState(activeScrollView: ActiveScrollView) -> (main: Bool, page: Bool) {
+        let pageScrollView = visiblePage?.scrollView
+        let mainNeedsIndicator = mainScrollView.contentSize.height > mainScrollView.bounds.height
+        let pageNeedsIndicator = pageScrollView?.contentSize.height ?? 0 > pageScrollView?.bounds.height ?? 0
+        let shouldShowMainIndicator = shouldShowMainScrollIndicator(
+            activeScrollView: activeScrollView,
+            mainNeedsIndicator: mainNeedsIndicator,
+            pageNeedsIndicator: pageNeedsIndicator
+        )
+        let shouldShowPageIndicator = shouldShowPageScrollIndicator(
+            activeScrollView: activeScrollView,
+            pageNeedsIndicator: pageNeedsIndicator,
+            showingMainIndicator: shouldShowMainIndicator
+        )
+        return (main: shouldShowMainIndicator, page: shouldShowPageIndicator)
+    }
+    
+    func shouldShowMainScrollIndicator(activeScrollView: ActiveScrollView, mainNeedsIndicator: Bool, pageNeedsIndicator: Bool) -> Bool {
+        if activeScrollView == .main && isSwipeEnabled && mainNeedsIndicator {
+            return true
+        }
+        if activeScrollView == .none && isSwipeEnabled && mainNeedsIndicator {
+            return true
+        }
+        return false
+    }
+    
+    func shouldShowPageScrollIndicator(activeScrollView: ActiveScrollView, pageNeedsIndicator: Bool, showingMainIndicator: Bool) -> Bool {
+        if activeScrollView == .page && visiblePage?.isSwipeEnabled == true && pageNeedsIndicator {
+            return true
+        }
+        if activeScrollView == .none && !showingMainIndicator && visiblePage?.isSwipeEnabled == true && pageNeedsIndicator {
+            return true
+        }
+        return false
+    }
+    
+    func updateScrollIndicatorsIfNeeded(_ newState: (main: Bool, page: Bool)) {
+        guard newState.main != lastScrollIndicatorState.main ||
               newState.page != lastScrollIndicatorState.page else { return }
-        
-        scrollView.showsVerticalScrollIndicator = newState.main
+        mainScrollView.showsVerticalScrollIndicator = newState.main
         visiblePage?.scrollView.showsVerticalScrollIndicator = newState.page
         lastScrollIndicatorState = newState
+    }
+    func configureScrollIndicators(_ scrollView: UIScrollView) {
+        guard scrollView != contentScrollView else { return }
+        let isMainScrollView = (scrollView == mainScrollView)
+        let indicatorState = calculateScrollIndicatorState(activeScrollView: isMainScrollView ? .main : .page)
+        updateScrollIndicatorsIfNeeded(indicatorState)
+    }
+    
+    func updateScrollIndicatorsForStateChange() {
+        let indicatorState = calculateScrollIndicatorState(activeScrollView: .none)
+        updateScrollIndicatorsIfNeeded(indicatorState)
     }
     
     func handleContentScrollViewScroll(_ scrollView: UIScrollView) {
@@ -463,16 +507,20 @@ private extension CLNestedSlideView {
             if isScrollingDown && isPageScrollAtTop {
                 isSwipeEnabled = true
                 visiblePage?.isSwipeEnabled = false
+                updateScrollIndicatorsForStateChange()
             } else {
                 scrollView.contentOffset.y = maxOffset
                 visiblePage?.isSwipeEnabled = true
+                updateScrollIndicatorsForStateChange()
             }
         } else if offsetY >= maxOffset {
             scrollView.contentOffset.y = maxOffset
             isSwipeEnabled = false
             visiblePage?.isSwipeEnabled = true
+            updateScrollIndicatorsForStateChange()
         } else {
             visiblePage?.isSwipeEnabled = false
+            updateScrollIndicatorsForStateChange()
         }
         lastMainScrollOffsetY = scrollView.contentOffset.y
     }
