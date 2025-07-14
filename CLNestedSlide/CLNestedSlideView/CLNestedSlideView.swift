@@ -176,16 +176,26 @@ public class CLNestedSlideView: UIView {
 
 // MARK: - 公共方法
 public extension CLNestedSlideView {
-    /// 重新加载所有页面
-    func reload() {
+    /// 重新加载所有页面，并可选择跳转到指定索引
+    /// - Parameter index: 重载后要跳转到的页面索引。如果为 nil，则保留当前页或跳转到新的最后一页。
+    func reload(toPageAtIndex index: Int? = nil) {
         guard let dataSource = dataSource else { return }
-        guard pageCount != dataSource.numberOfPages(in: self) || pageCache.isEmpty else { return }
+        let oldIndex = currentIndex
+        pageCache.removeAll()
         pageCount = dataSource.numberOfPages(in: self)
-        if !isLazyLoading { pageCache.removeAll() }
         setupPlaceholderViews()
-        guard pageCount > 0 else { return }
-        currentIndex = min(currentIndex, pageCount - 1)
-        loadPage(at: currentIndex)
+        if pageCount == 0 {
+            visiblePage = nil
+            currentIndex = 0
+            contentScrollView.contentOffset = .zero
+            delegate?.contentScrollViewDidScrollToPage(at: -1)
+            return
+        }
+        let newIndex = index.map { clampIndex($0) } ?? min(oldIndex, pageCount - 1)
+        scrollToPage(at: newIndex, animated: false)
+        if newIndex == oldIndex {
+            delegate?.contentScrollViewDidScrollToPage(at: newIndex)
+        }
     }
     /// 滚动到指定页面
     func scrollToPage(at index: Int, animated: Bool) {
